@@ -3,13 +3,15 @@ import {
   mdiClockOutline,
   mdiCloud,
   mdiCrop,
-  mdiAccount,
-  mdiCogOutline,
-  mdiEmail,
   mdiLogout,
   mdiThemeLightDark,
   mdiGithub,
   mdiReact,
+  mdiBox,
+  mdiAccountGroup,
+  mdiCartOutline,
+  mdiChartLine,
+  mdiRefresh,
 } from '@mdi/js'
 
 export default [
@@ -38,23 +40,20 @@ export default [
     isCurrentUser: true,
     menu: [
       {
-        icon: mdiAccount,
         label: 'My Profile',
         to: '/profile',
       },
       {
-        icon: mdiCogOutline,
         label: 'Settings',
+        to: '/parametre',
       },
       {
-        icon: mdiEmail,
         label: 'Messages',
       },
       {
         isDivider: true,
       },
       {
-        icon: mdiLogout,
         label: 'Log Out',
         isLogout: true,
       },
@@ -79,6 +78,31 @@ export default [
     isDesktopNoLabel: true,
     href: 'https://github.com/justboil/admin-one-react-tailwind',
     target: '_blank',
+  },
+  {
+    icon: mdiBox,
+    label: 'Produits',
+    to: '/produits',
+  },
+  {
+    icon: mdiAccountGroup,
+    label: 'Fournisseurs',
+    to: '/fournisseurs',
+  },
+  {
+    icon: mdiCartOutline,
+    label: 'Commandes Fournisseurs',
+    to: '/commandes-fournisseurs',
+  },
+  {
+    icon: mdiChartLine,
+    label: 'Historique Ventes',
+    to: '/historique-ventes',
+  },
+  {
+    icon: mdiRefresh,
+    label: 'Approvisionnements Auto',
+    to: '/approvisionnements-auto',
   },
   {
     icon: mdiLogout,

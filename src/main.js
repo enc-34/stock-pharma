@@ -1,5 +1,6 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
+import { createI18n } from 'vue-i18n'
 
 import App from './App.vue'
 import router from './router'
@@ -7,11 +8,72 @@ import { useMainStore } from '@/stores/main.js'
 
 import './css/main.css'
 
+// Messages de traduction
+const messages = {
+  en: {
+    message: {
+      hello: 'hello world',
+      gestionProduits: 'Product Management',
+      ajouterProduit: 'Add Product',
+      exporterCSV: 'Export CSV',
+      telechargerPDF: 'Download PDF',
+      modifier: 'Edit',
+      supprimer: 'Delete',
+      gestionVentes: 'Sales Management',
+      enregistrerVente: 'Record Sale',
+      historiqueVentes: 'Sales History',
+      produit: 'Product',
+      quantite: 'Quantity',
+      dateVente: 'Sale Date',
+      parametres: 'Settings',
+      langue: 'Language',
+      francais: 'French',
+      anglais: 'English',
+      enregistrer: 'Save',
+      annuler: 'Cancel',
+    },
+  },
+  fr: {
+    message: {
+      hello: 'bonjour le monde',
+      gestionProduits: 'Gestion Produits',
+      ajouterProduit: 'Ajouter Produit',
+      exporterCSV: 'Exporter CSV',
+      telechargerPDF: 'Télécharger PDF',
+      modifier: 'Modifier',
+      supprimer: 'Supprimer',
+      gestionVentes: 'Gestion des Ventes',
+      enregistrerVente: 'Enregistrer la vente',
+      historiqueVentes: 'Historique des Ventes',
+      produit: 'Produit',
+      quantite: 'Quantité',
+      dateVente: 'Date de vente',
+      parametres: 'Paramètres',
+      langue: 'Langue',
+      francais: 'Français',
+      anglais: 'Anglais',
+      enregistrer: 'Enregistrer',
+      annuler: 'Annuler',
+    },
+  },
+}
+
 // Init Pinia
 const pinia = createPinia()
 
+// Init i18n
+const i18n = createI18n({
+  locale: 'fr',
+  fallbackLocale: 'fr',
+  messages,
+})
+
 // Create Vue app
-createApp(App).use(router).use(pinia).mount('#app')
+const app = createApp(App)
+app.use(router)
+app.use(pinia)
+app.use(i18n)
+app.mount('#app')
 
 // Init main store
 const mainStore = useMainStore(pinia)

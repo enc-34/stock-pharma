@@ -1,90 +1,79 @@
-import { createRouter, createWebHashHistory } from 'vue-router'
-import Style from '@/views/StyleView.vue'
-import Home from '@/views/HomeView.vue'
+import { createRouter, createWebHistory } from 'vue-router'
+import { getToken } from '@/api/auth.js'
+import Login from '@/pages/Login.vue'
+import Dashboard from '@/pages/Dashboard.vue'
+import Produits from '@/pages/Produits.vue'
+import Categories from '@/pages/Categories.vue'
+import Fournisseurs from '@/pages/Fournisseurs.vue'
+import Mouvements from '@/pages/Mouvements.vue'
+import Parametre from '@/pages/Parametre.vue'
+import HistoriquesMouvements from '@/pages/HistoriquesMouvements.vue'
+import BarcodeScanner from '@/pages/BarcodeScanner.vue'
 
 const routes = [
+  { path: '/login', name: 'Login', component: Login },
+  { path: '/', name: 'Dashboard', component: Dashboard },
+  { path: '/dashboard', name: 'Dashboard', component: Dashboard },
+  { path: '/produits', name: 'Produits', component: Produits },
+  { path: '/categories', name: 'Categories', component: Categories },
+  { path: '/fournisseurs', name: 'Fournisseurs', component: Fournisseurs },
+  { path: '/mouvements', name: 'Mouvements', component: Mouvements },
+  { path: '/parametre', name: 'Parametre', component: Parametre },
   {
-    meta: {
-      title: 'Select style',
-    },
-    path: '/',
-    name: 'style',
-    component: Style,
+    path: '/historiques-mouvements',
+    name: 'HistoriquesMouvements',
+    component: HistoriquesMouvements,
   },
   {
-    // Document title tag
-    // We combine it with defaultDocumentTitle set in `src/main.js` on router.afterEach hook
-    meta: {
-      title: 'Dashboard',
-    },
-    path: '/dashboard',
-    name: 'dashboard',
-    component: Home,
+    path: '/barcode-scanner',
+    name: 'BarcodeScanner',
+    component: BarcodeScanner,
   },
   {
-    meta: {
-      title: 'Tables',
-    },
-    path: '/tables',
-    name: 'tables',
-    component: () => import('@/views/TablesView.vue'),
+    path: '/historique-ventes',
+    name: 'HistoriqueVentes',
+    component: () => import('@/pages/HistoriqueVentes.vue'),
   },
   {
-    meta: {
-      title: 'Forms',
-    },
-    path: '/forms',
-    name: 'forms',
-    component: () => import('@/views/FormsView.vue'),
+    path: '/ventes',
+    name: 'Ventes',
+    component: () => import('@/pages/Ventes.vue'),
   },
   {
-    meta: {
-      title: 'Profile',
-    },
+    path: '/approvisionnements-auto',
+    name: 'ApprovisionnementsAuto',
+    component: () => import('@/pages/ApprovisionnementsAuto.vue'),
+  },
+  {
     path: '/profile',
-    name: 'profile',
-    component: () => import('@/views/ProfileView.vue'),
+    name: 'Profile',
+    component: () => import('@/pages/Profile.vue'),
   },
   {
-    meta: {
-      title: 'Ui',
-    },
-    path: '/ui',
-    name: 'ui',
-    component: () => import('@/views/UiView.vue'),
-  },
-  {
-    meta: {
-      title: 'Responsive layout',
-    },
-    path: '/responsive',
-    name: 'responsive',
-    component: () => import('@/views/ResponsiveView.vue'),
-  },
-  {
-    meta: {
-      title: 'Login',
-    },
-    path: '/login',
-    name: 'login',
-    component: () => import('@/views/LoginView.vue'),
-  },
-  {
-    meta: {
-      title: 'Error',
-    },
-    path: '/error',
-    name: 'error',
-    component: () => import('@/views/ErrorView.vue'),
+    path: '/commandes-fournisseurs',
+    name: 'CommandesFournisseurs',
+    component: () => import('@/pages/CommandesFournisseurs.vue'),
   },
 ]
 
 const router = createRouter({
-  history: createWebHashHistory(),
+  history: createWebHistory(),
   routes,
   scrollBehavior(to, from, savedPosition) {
     return savedPosition || { top: 0 }
   },
+})
+
+// Guard : redirection si pas connecté
+router.beforeEach((to, from, next) => {
+  const publicPages = ['/login']
+  const authRequired = !publicPages.includes(to.path)
+  const token = getToken()
+
+  if (authRequired && !token) {
+    return next('/login')
+  }
+  next()
 })
 
 export default router
