@@ -3,7 +3,10 @@ services:
     name: django-backend
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: python manage.py migrate && gunicorn config.wsgi:application
+    startCommand: |
+      python manage.py migrate &&
+      python manage.py loaddata data.json &&
+      gunicorn config.wsgi:application
     envVars:
       - key: DJANGO_SETTINGS_MODULE
         value: config.settings
