@@ -51,7 +51,7 @@ def dashboard_stats(request):
 
 @api_view(['GET'])
 def top5_produits(request):
-    produits = Produit.objects.annotate(total_vendu=Sum('historiquevente__quantite')).order_by('-total_vendu')[:5]
+    produits = Produit.objects.annotate(total_vendu=Sum('ventes__quantite')).order_by('-total_vendu')[:5]
     data = [
         {
             'id': p.id,
