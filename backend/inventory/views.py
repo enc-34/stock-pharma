@@ -1,111 +1,146 @@
-from rest_framework import viewsets, status
-from rest_framework.decorators import action, api_view
-from django.template.loader import render_to_string
-from reportlab.lib.pagesizes import letter
-from reportlab.pdfgen import canvas
+from rest_framework import viewsets
+from .models import Categorie, Fournisseur, Produit, MouvementStock, CommandeFournisseur, HistoriqueVente, ApprovisionnementAuto
+from .serializers import (
+    CategorieSerializer, FournisseurSerializer, ProduitSerializer, 
+    MouvementStockSerializer, CommandeFournisseurSerializer, 
+    HistoriqueVenteSerializer, ApprovisionnementAutoSerializer
+)
+from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
 from django.utils import timezone
-from django.db.models import Sum, F
-from .models import Produit, Categorie, Fournisseur, MouvementStock
-from .serializers import ProduitSerializer, CategorieSerializer, FournisseurSerializer, MouvementStockSerializer
-import csv
-from django.http import HttpResponse
-
-class ProduitViewSet(viewsets.ModelViewSet):
-    permission_classes = [IsAuthenticated]
-    queryset = Produit.objects.all()
-    serializer_class = ProduitSerializer
-
+from django.db import models
 
 class CategorieViewSet(viewsets.ModelViewSet):
     queryset = Categorie.objects.all()
     serializer_class = CategorieSerializer
 
+
 class FournisseurViewSet(viewsets.ModelViewSet):
     queryset = Fournisseur.objects.all()
     serializer_class = FournisseurSerializer
+
+
+class ProduitViewSet(viewsets.ModelViewSet):
+    queryset = Produit.objects.all().order_by('nom')
+    serializer_class = ProduitSerializer
+
+    @action(detail=False, methods=['get'])
+    def critiques(self, request):
+        """Retourne les produits avec stock bas ou presque expirés"""
+        produits = Produit.objects.filter(stock__lte=models.F('stock_min'))
+        serializer = self.get_serializer(produits, many=True)
+        return Response(serializer.data)
+
 
 class MouvementStockViewSet(viewsets.ModelViewSet):
     queryset = MouvementStock.objects.all()
     serializer_class = MouvementStockSerializer
 
-@action(detail=False, methods=['get'], url_path='scan')
-def scan(self, request):
-    barcode = request.query_params.get('barcode', None)
-    if not barcode:
-        return Response({"error": "Barcode manquant"}, status=status.HTTP_400_BAD_REQUEST)
-    try:
-        produit = Produit.objects.get(barcode=barcode)
-        serializer = self.get_serializer(produit)
-        return Response(serializer.data)
-    except Produit.DoesNotExist:
-        return Response({"error": "Produit introuvable"}, status=status.HTTP_404_NOT_FOUND)
+
+from django.http import HttpResponse
+from django.template.loader import render_to_string
+from xhtml2pdf import pisa
+from rest_framework.decorators import action
+from rest_framework.response import Response
+
+class CommandeFournisseurViewSet(viewsets.ModelViewSet):
+    queryset = CommandeFournisseur.objects.all()
+    serializer_class = CommandeFournisseurSerializer
+
+    @action(detail=True, methods=['get'], url_path='pdf')
+    def export_pdf(self, request, pk=None):
+        commande = self.get_queryset().get(pk=pk)
+        # Préparer les données des items pour le template
+        items = commande.items.all()
+        html_string = render_to_string('commande_fournisseur_pdf.html', {'commande': commande, 'items': items})
+        response = HttpResponse(content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="commande_{commande.id}.pdf"'
+
+        pisa_status = pisa.CreatePDF(html_string, dest=response)
+        if pisa_status.err:
+            return Response({'error': 'Erreur lors de la génération du PDF'}, status=500)
+        return response
 
 
-# ---- ALERTES ----
-@api_view(['GET'])
-def alertes_stock_bas(request):
-    produits = Produit.objects.filter(stock__lte=F('stock_min'))
-    serializer = ProduitSerializer(produits, many=True)
-    return Response(serializer.data)
+from rest_framework import status
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from django.db import transaction
 
-@api_view(['GET'])
-def alertes_expiration(request):
-    produits = Produit.objects.filter(date_expiration__lte=timezone.now().date())
-    serializer = ProduitSerializer(produits, many=True)
-    return Response(serializer.data)
+class HistoriqueVenteViewSet(viewsets.ModelViewSet):
+    queryset = HistoriqueVente.objects.all()
+    serializer_class = HistoriqueVenteSerializer
 
-@api_view(['GET'])
-def alertes_view(request):
-    stock_min = 10  # seuil d'alerte pour le stock
-    today = timezone.now().date()
-    expiration_limit = today + timezone.timedelta(days=30)
+    @action(detail=False, methods=['post'])
+    def enregistrer_vente(self, request):
+        """
+        Enregistre une vente et crée un mouvement de stock de type SORTIE.
+        Attendu JSON: { "produit": id_produit, "quantite": qte_vendue }
+        """
+        data = request.data
+        produit_id = data.get('produit')
+        quantite = data.get('quantite')
 
-    stock_bas = Produit.objects.filter(stock__lt=stock_min)
-    expiration_proche = Produit.objects.filter(date_expiration__lte=expiration_limit)
+        if not produit_id or not quantite:
+            return Response({"error": "Produit et quantité sont requis."}, status=status.HTTP_400_BAD_REQUEST)
 
-    return Response({
-        "stock_bas": [{"id": p.id, "nom": p.nom, "stock": p.stock} for p in stock_bas],
-        "expiration": [{"id": p.id, "nom": p.nom, "date_expiration": p.date_expiration} for p in expiration_proche]
-    })
+        try:
+            quantite = int(quantite)
+            if quantite <= 0:
+                return Response({"error": "La quantité doit être positive."}, status=status.HTTP_400_BAD_REQUEST)
+        except ValueError:
+            return Response({"error": "Quantité invalide."}, status=status.HTTP_400_BAD_REQUEST)
 
-# ---- DASHBOARD ----
-@api_view(['GET'])
-def dashboard_stats(request):
-    total_produits = Produit.objects.count()
-    total_stock = Produit.objects.aggregate(total=Sum('stock'))['total'] or 0
-    total_categories = Categorie.objects.count()
-    return Response({
-        "total_produits": total_produits,
-        "total_stock": total_stock,
-        "total_categories": total_categories
-    })
+        from .models import Produit, HistoriqueVente, MouvementStock
 
-# ---- EXPORT CSV ----
-@api_view(['GET'])
-def export_produits_csv(request):
-    response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="produits.csv"'
-    writer = csv.writer(response)
-    writer.writerow(['Nom', 'Prix', 'Stock', 'Date expiration'])
-    for p in Produit.objects.all():
-        writer.writerow([p.nom, p.prix, p.stock, p.date_expiration])
-    return response
+        try:
+            produit = Produit.objects.get(id=produit_id)
+        except Produit.DoesNotExist:
+            return Response({"error": "Produit non trouvé."}, status=status.HTTP_404_NOT_FOUND)
 
-# ---- EXPORT PDF ----
-@api_view(['GET'])
-def export_produits_pdf(request):
-    response = HttpResponse(content_type='application/pdf')
-    response['Content-Disposition'] = 'attachment; filename="produits.pdf"'
-    p = canvas.Canvas(response, pagesize=letter)
-    y = 750
-    p.setFont("Helvetica", 12)
-    p.drawString(100, y, "Liste des Produits")
-    y -= 30
-    for produit in Produit.objects.all():
-        p.drawString(100, y, f"{produit.nom} - Stock: {produit.stock}")
-        y -= 20
-    p.showPage()
-    p.save()
-    return response
+        if produit.stock < quantite:
+            return Response({"error": "Stock insuffisant."}, status=status.HTTP_400_BAD_REQUEST)
+
+        with transaction.atomic():
+            # Créer la vente
+            vente = HistoriqueVente.objects.create(
+                produit=produit,
+                quantite=quantite,
+                date_vente=timezone.now()
+            )
+            # Créer le mouvement de stock SORTIE
+            MouvementStock.objects.create(
+                produit=produit,
+                type_mouvement='SORTIE',
+                quantite=quantite,
+                date=timezone.now()
+            )
+            # Mettre à jour le stock du produit
+            produit.stock -= quantite
+            produit.save()
+
+        serializer = self.get_serializer(vente)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class ApprovisionnementAutoViewSet(viewsets.ModelViewSet):
+    queryset = ApprovisionnementAuto.objects.all().order_by('-date_proposition')
+    serializer_class = ApprovisionnementAutoSerializer
+
+from rest_framework.decorators import action
+from rest_framework.response import Response
+
+class ApprovisionnementAutoViewSet(viewsets.ModelViewSet):
+    queryset = ApprovisionnementAuto.objects.all().order_by('-date_proposition')
+    serializer_class = ApprovisionnementAutoSerializer
+
+    @action(detail=True, methods=['post'], url_path='generer-commande')
+    def generer_commande(self, request, pk=None):
+        approvisionnement = self.get_object()
+        commande = approvisionnement.generer_commande()
+        if commande:
+            return Response({"status": "Commande générée", "commande_id": commande.id})
+        else:
+            return Response({"status": "Commande déjà générée ou produit sans fournisseur"}, status=400)
+
+

@@ -52,7 +52,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-] + MIDDLEWARE
+] 
 
 CORS_ALLOW_ALL_ORIGINS = True  # (pour le développement uniquement)
 
@@ -88,8 +88,12 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME':'gestion_stock',
+        'USER': 'root',
+        'PASSWORD': '',
+        'HOST': 'localhost',
+        'PORT': '3306',
     }
 }
 
@@ -124,7 +128,8 @@ USE_I18N = True
 
 USE_TZ = True
 
-ALLOWED_HOSTS = ['.onrender.com', 'localhost']
+ALLOWED_HOSTS = ['127.0.0.1', '.onrender.com', 'localhost']
+
 
 
 # Static files (CSS, JavaScript, Images)

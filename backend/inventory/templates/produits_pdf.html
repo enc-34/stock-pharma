@@ -36,22 +36,21 @@
       </thead>
       <tbody>
         {% for produit in produits %}
-        <tr v-for="produit in paginatedProduits" :key="produit.id" class="hover:bg-gray-50">
+        <tr>
           <td class="py-2 px-4 border-b">{{ produit.nom }}</td>
           <td class="py-2 px-4 border-b">{{ produit.prix }} FCFA</td>
           <td class="py-2 px-4 border-b">{{ produit.stock }}</td>
-          <td class="py-2 px-4 border-b">{{ produit.categorie ? produit.categorie.nom : '-' }}</td>
           <td class="py-2 px-4 border-b">
-            {{ produit.fournisseur ? produit.fournisseur.nom : '-' }}
+            {% if produit.categorie %}{{ produit.categorie.nom }}{% else %}-{% endif %}
           </td>
-          <td class="py-2 px-4 border-b">{{ produit.date_expiration || '-' }}</td>
+          <td class="py-2 px-4 border-b">
+            {% if produit.fournisseur %}{{ produit.fournisseur.nom }}{% else %}-{% endif %}
+          </td>
+          <td class="py-2 px-4 border-b">
+            {% if produit.date_expiration %}{{ produit.date_expiration }}{% else %}-{% endif %}
+          </td>
           <td class="py-2 px-4 border-b space-x-2">
-            <button @click="editProduit(produit)" class="text-blue-600 hover:underline">
-              Modifier
-            </button>
-            <button @click="deleteProduit(produit.id)" class="text-red-600 hover:underline">
-              Supprimer
-            </button>
+            <!-- Actions can be added here if needed -->
           </td>
         </tr>
         {% endfor %}
